@@ -8,12 +8,16 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
+from mozci.push import Push as MozciPush
+
 from treeherder.model.models import Job, JobType, Push, Repository
 from treeherder.push_health.builds import get_build_failures
 from treeherder.push_health.compare import get_commit_history
 from treeherder.push_health.linting import get_lint_failures
-from treeherder.push_health.tests import get_test_failures, get_test_failure_jobs
+from treeherder.push_health.tests import get_test_failure_jobs, get_test_failures
 from treeherder.push_health.usage import get_usage
+
+# from treeherder.push_health.utils import job_to_dict
 from treeherder.webapp.api.serializers import PushSerializer
 from treeherder.webapp.api.utils import to_datetime, to_timestamp
 
@@ -211,21 +215,23 @@ class PushViewSet(viewsets.ViewSet):
                 "No push with revision: {0}".format(revision), status=HTTP_404_NOT_FOUND
             )
 
-        jobs = get_test_failure_jobs(push)
+        jobs, guids = get_test_failure_jobs(push)
 
         push_health_test_failures = get_test_failures(push, jobs)
         push_health_lint_failures = get_lint_failures(push)
         push_health_build_failures = get_build_failures(push)
-        test_failure_count = len(push_health_test_failures['needInvestigation'])
+        test_likely_regression_count = len(push_health_test_failures)
         build_failure_count = len(push_health_build_failures)
         lint_failure_count = len(push_health_lint_failures)
 
         return Response(
             {
-                'testFailureCount': test_failure_count,
+                'testFailureCount': test_likely_regression_count,
                 'buildFailureCount': build_failure_count,
                 'lintFailureCount': lint_failure_count,
-                'needInvestigation': test_failure_count + build_failure_count + lint_failure_count,
+                'needInvestigation': test_likely_regression_count
+                + build_failure_count
+                + lint_failure_count,
             }
         )
 
@@ -233,6 +239,17 @@ class PushViewSet(viewsets.ViewSet):
     def health_usage(self, request, project):
         usage = get_usage()
         return Response({'usage': usage})
+
+    # def convert(self, task):
+    #     print(f'task class: {task.__class__}')
+    #     task_dict = task.to_json()
+    #     del task_dict['_groups']
+    #     print(dir(task))
+    # task_dict['failedTests'] = {r.group for r in task.results if not r.ok}
+    # del task_dict['_results']
+    # task_dict['errors'] = task.errors
+    # del task_dict['_errors']
+    # return task_dict
 
     @action(detail=False)
     def health(self, request, project):
@@ -245,28 +262,30 @@ class PushViewSet(viewsets.ViewSet):
             repository = Repository.objects.get(name=project)
             push = Push.objects.get(revision=revision, repository=repository)
         except Push.DoesNotExist:
-            return Response(
-                "No push with revision: {0}".format(revision), status=HTTP_404_NOT_FOUND
-            )
+            return Response(f"No push with revision: {revision}", status=HTTP_404_NOT_FOUND)
+
+        mozciPush = MozciPush([revision], repository.name)
+        likely_regression_labels = list(mozciPush.get_likely_regressions('label'))
+        jobs = get_test_failure_jobs(push)
+        print(f"<><><> regression labels: {likely_regression_labels}")
+        # print(jobs)
+
+        test_failures = get_test_failures(list(jobs.keys()), likely_regression_labels)
+
+        test_result = 'pass'
+        if len(likely_regression_labels):
+            test_result = 'fail'
 
         commit_history_details = None
         parent_push = None
-        jobs = get_test_failure_jobs(push)
+
         # Parent compare only supported for Hg at this time.
         # Bug https://bugzilla.mozilla.org/show_bug.cgi?id=1612645
-        if repository.dvcs_type == 'hg':
-            commit_history_details = get_commit_history(repository, revision, push)
-            if commit_history_details['exactMatch']:
-                parent_push = commit_history_details.pop('parentPush')
-
-        push_health_test_failures = get_test_failures(
-            push,
-            jobs,
-            parent_push,
-        )
-        test_result = 'pass'
-        if len(push_health_test_failures['needInvestigation']):
-            test_result = 'fail'
+        # if repository.dvcs_type == 'hg':
+        #     # TODO: Need to use the MozciPush we already have for this.
+        #     commit_history_details = get_commit_history(mozciPush, push)
+        #     if commit_history_details['exactMatch']:
+        #         parent_push = commit_history_details.pop('parentPush')
 
         build_failures = get_build_failures(push, parent_push)
         build_result = 'fail' if len(build_failures) else 'pass'
@@ -286,7 +305,7 @@ class PushViewSet(viewsets.ViewSet):
             {
                 'revision': revision,
                 'repo': repository.name,
-                'needInvestigation': len(push_health_test_failures['needInvestigation']),
+                'needInvestigation': len(likely_regression_labels),
                 'author': push.author,
             },
         )
@@ -297,6 +316,7 @@ class PushViewSet(viewsets.ViewSet):
                 'id': push.id,
                 'result': push_result,
                 'jobs': jobs,
+                'labels': likely_regression_labels,
                 'metrics': {
                     'commitHistory': {
                         'name': 'Commit History',
@@ -311,7 +331,7 @@ class PushViewSet(viewsets.ViewSet):
                     'tests': {
                         'name': 'Tests',
                         'result': test_result,
-                        'details': push_health_test_failures,
+                        'details': test_failures,
                     },
                     'builds': {
                         'name': 'Builds',
@@ -322,6 +342,7 @@ class PushViewSet(viewsets.ViewSet):
                 'status': push.get_status(),
             }
         )
+
 
     @cache_memoize(60 * 60)
     def get_decision_jobs(self, push_ids):

@@ -67,22 +67,28 @@ def get_log_lines(failure):
     return messages
 
 
-def get_grouped(failures):
-    classified = {
-        NEED_INVESTIGATION: [],
-        KNOWN_ISSUES: [],
-    }
-
-    for failure in failures:
-        is_intermittent = failure['suggestedClassification'] == 'intermittent'
-
-        if (is_intermittent and failure['confidence'] == 100) or failure['passFailRatio'] > 0.5:
-            classified[KNOWN_ISSUES].append(failure)
-        elif failure['failedInParent']:
-            classified[KNOWN_ISSUES].append(failure)
-        else:
-            classified[NEED_INVESTIGATION].append(failure)
-            # If it needs investigation, we, by definition, don't have 100% confidence.
-            failure['confidence'] = min(failure['confidence'], 90)
-
-    return classified
+# def get_grouped(failures, likely_regression_labels):
+#     classified = {
+#         NEED_INVESTIGATION: {
+#             'tests': [],
+#             'otherJobs': [],
+#         },
+#         KNOWN_ISSUES: {
+#             'tests': [],
+#             'otherJobs': [],
+#         }
+#     }
+#     print(failures)
+#
+#     for failure in failures
+#     regressions_jobs = {k: v for k, v in jobs.items() if k in likely_regression_labels}
+#     known_issues_jobs = {k: v for k, v in jobs.items() if k not in likely_regression_labels}
+#     likely_regression_tests = get_test_failures(regressions_jobs)
+#     known_issues_tests = get_test_failures(known_issues_jobs)
+#     {
+#         'needInvestigation': likely_regression_tests,
+#         'knownIssues': known_issues_tests,
+#     },
+#
+#
+#     return classified

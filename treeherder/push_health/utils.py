@@ -140,6 +140,7 @@ def job_to_dict(job):
             'platform': job.machine_platform.platform,
             'task_id': job.taskcluster_metadata.task_id,
             'run_id': job.taskcluster_metadata.retry_id,
+            'guid': job.guid,
         }
     )
     return job_dict
