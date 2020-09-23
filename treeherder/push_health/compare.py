@@ -10,7 +10,13 @@ def get_commit_history(mozciPush, push):
     parent = mozciPush.parent
     parent_sha = parent.revs[-1]
 
-    parents = Push.objects.filter(repository__name=parent.branch, revision=parent_sha)
+    parents = Push.objects.filter(
+        repository__name=parent.branch, revision=parent_sha
+    ).select_related(
+        'repository',
+        'repository__repository_group',
+    )
+
     parent_repo = Repository.objects.get(name=parent.branch)
     parent_push = parents[0] if len(parents) else None
 

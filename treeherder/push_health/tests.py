@@ -30,12 +30,12 @@ def get_test_failure_jobs(push):
         .exclude(
             Q(machine_platform__platform='lint') | Q(job_type__symbol='mozlint'),
         )
-        .select_related('job_type', 'machine_platform', 'taskcluster_metadata')
+        .select_related('job_type', 'machine_platform', 'taskcluster_metadata', 'job_group')
     )
     failed_job_types = [job.job_type.name for job in testfailed_jobs]
     passing_jobs = Job.objects.filter(
         push=push, job_type__name__in=failed_job_types, result__in=['success', 'unknown']
-    ).select_related('job_type', 'machine_platform', 'taskcluster_metadata')
+    ).select_related('job_type', 'machine_platform', 'taskcluster_metadata', 'job_group')
 
     jobs = {}
 
@@ -94,6 +94,8 @@ def get_test_failures(push, failed_jobs, likely_regression_labels):
         job_log__job__job_type__name__in=failed_job_labels,
         job_log__job__result='testfailed',
     ).select_related(
+        'job_log',
+        'job_log__job',
         'job_log__job__job_type',
         'job_log__job__job_group',
         'job_log__job__machine_platform',

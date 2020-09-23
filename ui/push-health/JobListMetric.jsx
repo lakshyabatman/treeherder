@@ -38,5 +38,4 @@ JobListMetric.propTypes = {
   }).isRequired,
   repo: PropTypes.string.isRequired,
   revision: PropTypes.string.isRequired,
-  showParentMatches: PropTypes.bool.isRequired,
 };
