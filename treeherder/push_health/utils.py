@@ -141,7 +141,6 @@ def job_to_dict(job):
             'job_type_symbol': job.job_type.symbol,
             'job_group_name': job.job_group.name,
             'job_group_symbol': job.job_group.symbol,
-            # 'option_collection_hash': job.option_collection_hash,
             'platform': job.machine_platform.platform,
             'task_id': job.taskcluster_metadata.task_id,
             'run_id': job.taskcluster_metadata.retry_id,
