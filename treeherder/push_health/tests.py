@@ -72,15 +72,44 @@ def get_test_failure_jobs(push):
 
     return jobs
 
+def get_line(test_name, action, job, option_map):
+    config = clean_config(option_map[job.option_collection_hash])
+    platform = clean_platform(job.machine_platform.platform)
+    job_name = job.job_type.name
+    job_symbol = job.job_type.symbol
+    job_group = job.job_group.name
+    job_group_symbol = job.job_group.symbol
+    job.job_key = '{}{}{}{}'.format(config, platform, job_name, job_group)
+    # The 't' ensures the key starts with a character, as required for a query selector
+    test_key = re.sub(
+        r'\W+', '', 't{}{}{}{}{}'.format(test_name, config, platform, job_name, job_group)
+    )
+
+    return {
+        'testName': test_name,
+        'action': action,
+        'jobName': job_name,
+        'jobSymbol': job_symbol,
+        'jobGroup': job_group,
+        'jobGroupSymbol': job_group_symbol,
+        'platform': platform,
+        'config': config,
+        'key': test_key,
+        'jobKey': job.job_key,
+        'tier': job.tier,
+    }
+
 
 # noinspection PoetryPackageRequirements
-def get_test_failures(failed_jobs_labels, likely_regression_labels):
+def get_test_failures(push, failed_jobs, likely_regression_labels):
     # option_map is used to map platforms for the job.option_collection_hash
     option_map = OptionCollection.objects.get_option_collection_map()
+    failed_job_labels = list(failed_jobs.keys())
 
-    new_failure_lines = FailureLine.objects.filter(
+    failure_lines = FailureLine.objects.filter(
         action__in=['test_result', 'log', 'crash'],
-        job_log__job__job_type__name__in=failed_jobs_labels,
+        job_log__job__push=push,
+        job_log__job__job_type__name__in=failed_job_labels,
         job_log__job__result='testfailed',
     ).select_related(
         'job_log__job__job_type',
@@ -92,59 +121,41 @@ def get_test_failures(failed_jobs_labels, likely_regression_labels):
     # each job.
     regressions = {
         'tests': {},
-        'otherJobs': [],
+        'unstructuredFailures': [],
     }
     known_issues = {
         'tests': {},
-        'otherJobs': [],
+        'unstructuredFailures': [],
     }
     # Keep track of these so that we can add them to the 'otherJobs'
-    labels_without_failure_lines = failed_jobs_labels.copy()
+    labels_without_failure_lines = failed_job_labels.copy()
 
-    for failure_line in new_failure_lines:
+    for failure_line in failure_lines:
         test_name = clean_test(
             failure_line.action, failure_line.test, failure_line.signature, failure_line.message
         )
         if not test_name:
             continue
+        action = failure_line.action.split('_')[0]
         job = failure_line.job_log.job
-        config = clean_config(option_map[job.option_collection_hash])
-        platform = clean_platform(job.machine_platform.platform)
         job_name = job.job_type.name
-        job_symbol = job.job_type.symbol
-        job_group = job.job_group.name
-        job_group_symbol = job.job_group.symbol
-        job.job_key = '{}{}{}{}'.format(config, platform, job_name, job_group)
-        # The 't' ensures the key starts with a character, as required for a query selector
-        test_key = re.sub(
-            r'\W+', '', 't{}{}{}{}{}'.format(test_name, config, platform, job_name, job_group)
-        )
+
         classification = known_issues
         if job_name in likely_regression_labels:
             classification = regressions
             if job_name in labels_without_failure_lines:
                 labels_without_failure_lines.remove(job_name)
 
-        if test_key not in classification['tests']:
-            classification['tests'][test_key] = {
-                'testName': test_name,
-                'action': failure_line.action.split('_')[0],
-                'jobName': job_name,
-                'jobSymbol': job_symbol,
-                'jobGroup': job_group,
-                'jobGroupSymbol': job_group_symbol,
-                'platform': platform,
-                'config': config,
-                'key': test_key,
-                'jobKey': job.job_key,
-                'suggestedClassification': 'New Failure',
-                'confidence': 0,
-                'tier': job.tier,
-            }
+        line = get_line(test_name, action, job, option_map)
+        if line['key'] not in classification['tests']:
+            classification['tests'][line['key']] = line
 
     # Any labels that were not in a FailureLine should go into the appropriate bucket 'otherJobs' list.
     for label in labels_without_failure_lines:
         bucket = regressions if label in likely_regression_labels else known_issues
-        bucket['otherJobs'].append(label)
+        bucket['unstructuredFailures'].append(get_line(None, None, failed_jobs[label], option_map))
 
-    return {'regressions': regressions, 'knownIssues': known_issues}
+    regressions['tests'] = regressions['tests'].values()
+    known_issues['tests'] = known_issues['tests'].values()
+
+    return {'needInvestigation': regressions, 'knownIssues': known_issues}

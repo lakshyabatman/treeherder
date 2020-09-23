@@ -1,6 +1,7 @@
 [mozci]
 verbose = 1
 data_sources = ['treeherder', 'adr']
+maxdepth = 5
 
 [mozci.cache]
 default = "file"

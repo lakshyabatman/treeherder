@@ -33,12 +33,12 @@ export default class TestMetric extends React.PureComponent {
 
     if (searchStr.length || !showParentMatches) {
       filteredNeedInvestigation = filterTests(
-        needInvestigation,
+        needInvestigation.tests,
         searchStr,
         showParentMatches,
       );
       filteredKnownIssues = filterTests(
-        knownIssues,
+        knownIssues.tests,
         searchStr,
         showParentMatches,
       );
@@ -49,6 +49,7 @@ export default class TestMetric extends React.PureComponent {
         <ClassificationGroup
           jobs={jobs}
           tests={filteredNeedInvestigation}
+          unstructuredFailures={needInvestigation.unstructuredFailures}
           name="Possible Regressions"
           repo={repo}
           currentRepo={currentRepo}
@@ -81,6 +82,7 @@ export default class TestMetric extends React.PureComponent {
         <ClassificationGroup
           jobs={jobs}
           tests={filteredKnownIssues}
+          unstructuredFailures={knownIssues.unstructuredFailures}
           name="Known Issues"
           repo={repo}
           currentRepo={currentRepo}
@@ -120,8 +122,14 @@ TestMetric.propTypes = {
     name: PropTypes.string.isRequired,
     result: PropTypes.string.isRequired,
     details: PropTypes.shape({
-      needInvestigation: PropTypes.array.isRequired,
-      knownIssues: PropTypes.array.isRequired,
+      needInvestigation: PropTypes.shape({
+        tests: PropTypes.array.isRequired,
+        unstructuredFailures: PropTypes.array.isRequired,
+      }),
+      knownIssues: PropTypes.shape({
+        tests: PropTypes.array.isRequired,
+        unstructuredFailures: PropTypes.array.isRequired,
+      }),
     }).isRequired,
   }).isRequired,
   repo: PropTypes.string.isRequired,
