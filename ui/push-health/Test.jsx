@@ -97,23 +97,25 @@ class Test extends PureComponent {
           >
             <Button
               onClick={this.toggleDetails}
-              className="text-break text-wrap border-0"
+              className="text-break text-wrap border-0 d-flex text-left"
               title="Click to expand for test detail"
               outline
             >
               <FontAwesomeIcon
                 icon={detailsShowing ? faCaretDown : faCaretRight}
-                className="mr-2 min-width-1"
+                className="mr-2 min-width-1 mt-1"
               />
-              {key === 'none' ? 'All' : this.getGroupHtml(key)}
-              <span className="ml-2">
-                ({tests.length} failure{tests.length > 1 && 's'})
+              <span>
+                {key === 'none' ? 'All' : this.getGroupHtml(key)}
+                <span className="ml-2">
+                  ({tests.length} failure{tests.length > 1 && 's'})
+                </span>
+                {!!failedInParent && (
+                  <Badge color="info" className="mx-1">
+                    {failedInParent} from parent
+                  </Badge>
+                )}
               </span>
-              {!!failedInParent && (
-                <Badge color="info" className="mx-1">
-                  {failedInParent} from parent
-                </Badge>
-              )}
             </Button>
             <Clipboard
               text={key}

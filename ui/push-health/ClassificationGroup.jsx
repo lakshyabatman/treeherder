@@ -267,14 +267,16 @@ class ClassificationGroup extends React.PureComponent {
           ))}
           {!!unstructuredFailures.length && (
             <div className="ml-4 mt-2">
-              <h5>{name}</h5>
+              <h5>Regressions without structured logs</h5>
               {unstructuredFailures.map((line) => (
                 <PlatformConfig
                   failure={line}
                   currentRepo={currentRepo}
                   notify={notify}
-                  groupedBy="platform"
+                  groupedBy="path"
                   updateParamsAndState={updateParamsAndState}
+                  jobs={jobs}
+                  key={line.key}
                 />
               ))}
             </div>
@@ -287,7 +289,7 @@ class ClassificationGroup extends React.PureComponent {
 
 ClassificationGroup.propTypes = {
   tests: PropTypes.arrayOf(PropTypes.object).isRequired,
-  unstructuredFailures: PropTypes.arrayOf(PropTypes.string).isRequired,
+  unstructuredFailures: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
   name: PropTypes.string.isRequired,
   currentRepo: PropTypes.shape({}).isRequired,
   revision: PropTypes.string.isRequired,

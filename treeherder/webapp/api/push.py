@@ -221,9 +221,12 @@ class PushViewSet(viewsets.ViewSet):
         jobs = get_test_failure_jobs(push)
 
         push_health_test_failures = get_test_failures(push, jobs, likely_regression_labels)
+        need_investigation = push_health_test_failures['needInvestigation']
         push_health_lint_failures = get_lint_failures(push)
         push_health_build_failures = get_build_failures(push)
-        test_likely_regression_count = len(push_health_test_failures)
+        test_likely_regression_count = (len(need_investigation['tests']) +
+                                        len(need_investigation['unstructuredFailures'])
+                                       )
         build_failure_count = len(push_health_build_failures)
         lint_failure_count = len(push_health_lint_failures)
 

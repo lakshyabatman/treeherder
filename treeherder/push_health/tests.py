@@ -72,14 +72,14 @@ def get_test_failure_jobs(push):
 
     return jobs
 
+
 def get_line(test_name, action, job, option_map):
-    config = clean_config(option_map[job.option_collection_hash])
-    platform = clean_platform(job.machine_platform.platform)
-    job_name = job.job_type.name
-    job_symbol = job.job_type.symbol
-    job_group = job.job_group.name
-    job_group_symbol = job.job_group.symbol
-    job.job_key = '{}{}{}{}'.format(config, platform, job_name, job_group)
+    config = clean_config(option_map[job['option_collection_hash']])
+    platform = clean_platform(job['platform'])
+    job_name = job['job_type_name']
+    job_symbol = job['job_type_symbol']
+    job_group = job['job_group_name']
+    job_group_symbol = job['job_group_symbol']
     # The 't' ensures the key starts with a character, as required for a query selector
     test_key = re.sub(
         r'\W+', '', 't{}{}{}{}{}'.format(test_name, config, platform, job_name, job_group)
@@ -95,8 +95,8 @@ def get_line(test_name, action, job, option_map):
         'platform': platform,
         'config': config,
         'key': test_key,
-        'jobKey': job.job_key,
-        'tier': job.tier,
+        'jobKey': '{}{}{}{}'.format(config, platform, job_name, job_group),
+        'tier': job['tier'],
     }
 
 
@@ -146,14 +146,14 @@ def get_test_failures(push, failed_jobs, likely_regression_labels):
             if job_name in labels_without_failure_lines:
                 labels_without_failure_lines.remove(job_name)
 
-        line = get_line(test_name, action, job, option_map)
+        line = get_line(test_name, action, job_to_dict(job), option_map)
         if line['key'] not in classification['tests']:
             classification['tests'][line['key']] = line
 
     # Any labels that were not in a FailureLine should go into the appropriate bucket 'otherJobs' list.
     for label in labels_without_failure_lines:
         bucket = regressions if label in likely_regression_labels else known_issues
-        bucket['unstructuredFailures'].append(get_line(None, None, failed_jobs[label], option_map))
+        bucket['unstructuredFailures'].append(get_line(None, None, failed_jobs[label][0], option_map))
 
     regressions['tests'] = regressions['tests'].values()
     known_issues['tests'] = known_issues['tests'].values()
