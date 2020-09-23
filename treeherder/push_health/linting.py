@@ -14,7 +14,7 @@ def get_lint_failures(push, parent_push=None):
 
     failures = [job_to_dict(job) for job in lint_failures]
 
-    if parent_push:
+    if parent_push and len(failures):
         mark_failed_in_parent(failures, get_lint_failures(parent_push))
 
     return failures

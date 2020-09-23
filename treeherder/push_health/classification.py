@@ -65,30 +65,3 @@ def get_log_lines(failure):
         if len(parts) == 3:
             messages.append(parts[2].strip())
     return messages
-
-
-# def get_grouped(failures, likely_regression_labels):
-#     classified = {
-#         NEED_INVESTIGATION: {
-#             'tests': [],
-#             'otherJobs': [],
-#         },
-#         KNOWN_ISSUES: {
-#             'tests': [],
-#             'otherJobs': [],
-#         }
-#     }
-#     print(failures)
-#
-#     for failure in failures
-#     regressions_jobs = {k: v for k, v in jobs.items() if k in likely_regression_labels}
-#     known_issues_jobs = {k: v for k, v in jobs.items() if k not in likely_regression_labels}
-#     likely_regression_tests = get_test_failures(regressions_jobs)
-#     known_issues_tests = get_test_failures(known_issues_jobs)
-#     {
-#         'needInvestigation': likely_regression_tests,
-#         'knownIssues': known_issues_tests,
-#     },
-#
-#
-#     return classified

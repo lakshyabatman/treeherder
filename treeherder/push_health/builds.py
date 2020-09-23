@@ -11,7 +11,7 @@ def get_build_failures(push, parent_push=None):
 
     failures = [job_to_dict(job) for job in build_failures]
 
-    if parent_push:
+    if parent_push and len(failures):
         mark_failed_in_parent(failures, get_build_failures(parent_push))
 
     return failures

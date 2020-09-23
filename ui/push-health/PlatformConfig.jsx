@@ -72,7 +72,6 @@ class PlatformConfig extends React.PureComponent {
       jobName,
       key,
       tier,
-      failedInParent,
       jobGroupSymbol,
       jobSymbol,
     } = failure;
@@ -127,7 +126,6 @@ class PlatformConfig extends React.PureComponent {
                 </span>
               );
             })}
-            {!!failedInParent && <Badge color="info">Failed In Parent</Badge>}
             <Button
               onClick={() => this.retriggerTask(taskList[0])}
               outline

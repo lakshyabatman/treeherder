@@ -17,7 +17,6 @@ from treeherder.push_health.linting import get_lint_failures
 from treeherder.push_health.tests import get_test_failure_jobs, get_test_failures
 from treeherder.push_health.usage import get_usage
 
-# from treeherder.push_health.utils import job_to_dict
 from treeherder.webapp.api.serializers import PushSerializer
 from treeherder.webapp.api.utils import to_datetime, to_timestamp
 
@@ -246,17 +245,6 @@ class PushViewSet(viewsets.ViewSet):
         usage = get_usage()
         return Response({'usage': usage})
 
-    # def convert(self, task):
-    #     print(f'task class: {task.__class__}')
-    #     task_dict = task.to_json()
-    #     del task_dict['_groups']
-    #     print(dir(task))
-    # task_dict['failedTests'] = {r.group for r in task.results if not r.ok}
-    # del task_dict['_results']
-    # task_dict['errors'] = task.errors
-    # del task_dict['_errors']
-    # return task_dict
-
     @action(detail=False)
     def health(self, request, project):
         """
@@ -272,13 +260,9 @@ class PushViewSet(viewsets.ViewSet):
 
         mozciPush = MozciPush([revision], repository.name)
         likely_regression_labels = list(mozciPush.get_likely_regressions('label'))
-        # likely_regression_labels = ['test-linux1804-64/debug-mochitest-devtools-chrome-fis-e10s-7', 'test-linux1804-64/debug-mochitest-devtools-chrome-fis-e10s-11', 'test-linux1804-64/debug-mochitest-devtools-chrome-fis-e10s-3', 'test-linux1804-64/debug-mochitest-devtools-chrome-fis-e10s-8', 'test-windows10-64/debug-mochitest-devtools-chrome-e10s-5', 'test-linux1804-64/debug-mochitest-devtools-chrome-fis-e10s-5', 'test-linux1804-64/debug-mochitest-devtools-chrome-e10s-11']
         jobs = get_test_failure_jobs(push)
-        print(f"<><><> regression labels: {likely_regression_labels}")
-        # print(jobs)
 
         test_failures = get_test_failures(push, jobs, likely_regression_labels)
-        print("We have the test failures")
         test_result = 'pass'
         if len(likely_regression_labels):
             test_result = 'fail'
@@ -296,10 +280,9 @@ class PushViewSet(viewsets.ViewSet):
 
         build_failures = get_build_failures(push, parent_push)
         build_result = 'fail' if len(build_failures) else 'pass'
-        print("we have the build failures")
-        lint_failures = get_lint_failures(push)
+
+        lint_failures = get_lint_failures(push, parent_push)
         lint_result = 'fail' if len(lint_failures) else 'pass'
-        print("we have the lint failures")
 
         push_result = 'pass'
         for metric_result in [test_result, lint_result, build_result]:
@@ -307,7 +290,7 @@ class PushViewSet(viewsets.ViewSet):
                 push_result = metric_result
             elif metric_result == 'fail':
                 push_result = metric_result
-        print("reporting to new relic")
+
         newrelic.agent.record_custom_event(
             'push_health_need_investigation',
             {
@@ -317,8 +300,8 @@ class PushViewSet(viewsets.ViewSet):
                 'author': push.author,
             },
         )
-        print("returning response")
-        data = {
+
+        return Response({
             'revision': revision,
             'id': push.id,
             'result': push_result,
@@ -347,10 +330,7 @@ class PushViewSet(viewsets.ViewSet):
                 },
             },
             'status': push.get_status(),
-        }
-
-        print("done with return data")
-        return Response(data)
+        })
 
 
     @cache_memoize(60 * 60)

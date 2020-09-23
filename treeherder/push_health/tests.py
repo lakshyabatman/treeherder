@@ -1,17 +1,10 @@
-import datetime
-import json
 import logging
 import re
-# from collections import defaultdict
 
-# from django.core.cache import cache
 from django.db.models import Q
 
 from treeherder.model.models import FailureLine, Job, OptionCollection
-# from treeherder.push_health.classification import set_classifications
-# from treeherder.push_health.filter import filter_failure
 from treeherder.push_health.utils import clean_config, clean_platform, clean_test, job_to_dict
-# from treeherder.webapp.api.utils import REPO_GROUPS
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +18,6 @@ ignored_log_lines = [
     'unexpected status',
     'Force-terminating active process(es)',
 ]
-
-
-def has_job(job, job_list):
-    return next((find_job for find_job in job_list if find_job['id'] == job.id), False)
-
-
-def has_line(failure_line, log_line_list):
-    return next(
-        (find_line for find_line in log_line_list if find_line['line_number'] == failure_line.line),
-        False,
-    )
 
 
 def get_test_failure_jobs(push):
